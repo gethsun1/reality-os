@@ -1,0 +1,28 @@
+{
+  "name": "realityos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "RealityOS monorepo: Story Protocol IP flows, Coinbase/Dynamic wallets, Yakoa verification",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "contracts",
+    "integrations",
+    "scripts"
+  ],
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write .",
+    "typecheck": "npm -ws run typecheck",
+    "build": "npm -ws run build",
+    "test": "npm -ws run test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.10",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  }
+}
+

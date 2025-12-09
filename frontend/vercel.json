@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [{ "src": "next.config.mjs", "use": "@vercel/next" }],
+  "env": {
+    "NEXT_PUBLIC_BACKEND_URL": "@next_public_backend_url",
+    "NEXT_PUBLIC_DYNAMIC_ENV_ID": "@next_public_dynamic_env_id",
+    "NEXT_PUBLIC_COINBASE_APP_ID": "@next_public_coinbase_app_id",
+    "NEXT_PUBLIC_STORY_CHAIN_ID": "@next_public_story_chain_id"
+  }
+}
+

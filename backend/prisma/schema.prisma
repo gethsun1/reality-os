@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  wallet    String   @unique
+  reputation Int     @default(0)
+  createdAt DateTime @default(now())
+  engagements Engagement[]
+  stakes    FanStake[]
+}
+
+model IPAsset {
+  id          Int       @id @default(autoincrement())
+  chainId     Int
+  contract    String
+  assetType   String
+  assetId     String
+  metadataURI String
+  creator     String
+  parentId    String?
+  royaltyBps  Int
+  createdAt   DateTime  @default(now())
+  engagements Engagement[]
+  economics   EconomicParticipation[]
+  royalties   RoyaltyFlow[]
+}
+
+model Engagement {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  asset     IPAsset  @relation(fields: [assetRef], references: [id])
+  assetRef  Int
+  action    String
+  weight    Int
+  createdAt DateTime @default(now())
+}
+
+model EconomicParticipation {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  asset     IPAsset  @relation(fields: [assetRef], references: [id])
+  assetRef  Int
+  amount    Float
+  kind      String
+  txHash    String?
+  createdAt DateTime @default(now())
+}
+
+model RoyaltyFlow {
+  id        Int      @id @default(autoincrement())
+  asset     IPAsset  @relation(fields: [assetRef], references: [id])
+  assetRef  Int
+  from      String
+  to        String
+  amount    Float
+  txHash    String?
+  createdAt DateTime @default(now())
+}
+
+model FanStake {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  amount    Float
+  createdAt DateTime @default(now())
+}
+

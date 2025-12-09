@@ -1,0 +1,31 @@
+{
+  "name": "@realityos/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "lint": "eslint --ext .ts src",
+    "test": "echo \"no backend tests yet\"",
+    "prisma:dev": "prisma migrate dev --name init",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.7.0",
+    "@realityos/integrations": "0.1.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/formbody": "^8.0.0",
+    "ethers": "^6.10.0",
+    "dotenv": "^16.3.2",
+    "fastify": "^4.25.2",
+    "fastify-plugin": "^4.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.10",
+    "prisma": "^5.7.0",
+    "tsx": "^4.7.0"
+  }
+}
+

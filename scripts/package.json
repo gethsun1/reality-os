@@ -1,0 +1,23 @@
+{
+  "name": "@realityos/scripts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "register:contestant": "ts-node src/registerContestant.ts",
+    "register:episode": "ts-node src/registerEpisode.ts",
+    "register:contribution": "ts-node src/registerContribution.ts",
+    "e2e": "ts-node src/e2eHappyPath.ts",
+    "dev": "ts-node src/registerContestant.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@realityos/integrations": "0.1.0",
+    "dotenv": "^16.3.2",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.10"
+  }
+}
+
