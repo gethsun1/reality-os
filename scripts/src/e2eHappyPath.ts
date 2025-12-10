@@ -1,43 +1,39 @@
 import 'dotenv/config';
-import { StoryClient, uploadJsonToIPFS } from '@realityos/integrations';
+import { registerIPAsset } from '@realityos/integrations';
+import { requireEnv } from './utils';
 
 async function main() {
-  const story = new StoryClient({ apiKey: process.env.STORY_API_KEY });
-
-  const contestantMeta = await uploadJsonToIPFS(
-    { name: 'Pilot Contestant', role: 'contestant', description: 'E2E flow' },
-    { apiUrl: process.env.IPFS_API_URL, apiKey: process.env.IPFS_API_KEY },
-  );
-  const contestant = await story.registerAsset({
+  const respContestant = await registerIPAsset({
     kind: 'contestant',
-    metadataURI: contestantMeta.uri,
+    metadata: { name: 'Pilot Contestant', role: 'contestant', description: 'E2E flow' },
     royaltyBps: 500,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
-  console.log('Contestant', contestant);
+  console.log('Contestant', respContestant);
 
-  const episodeMeta = await uploadJsonToIPFS(
-    { name: 'Episode 1', role: 'episode', parent: contestant.assetId },
-    { apiUrl: process.env.IPFS_API_URL, apiKey: process.env.IPFS_API_KEY },
-  );
-  const episode = await story.registerAsset({
+  const respEpisode = await registerIPAsset({
     kind: 'episode',
-    metadataURI: episodeMeta.uri,
-    parentId: contestant.assetId,
+    metadata: { name: 'Episode 1', role: 'episode', parent: respContestant.assetId },
+    parentId: respContestant.assetId,
     royaltyBps: 300,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
-  console.log('Episode', episode);
+  console.log('Episode', respEpisode);
 
-  const contributionMeta = await uploadJsonToIPFS(
-    { name: 'Fan Contribution', role: 'contribution', parent: episode.assetId },
-    { apiUrl: process.env.IPFS_API_URL, apiKey: process.env.IPFS_API_KEY },
-  );
-  const contribution = await story.registerAsset({
+  const respContribution = await registerIPAsset({
     kind: 'contribution',
-    metadataURI: contributionMeta.uri,
-    parentId: episode.assetId,
+    metadata: { name: 'Fan Contribution', role: 'contribution', parent: respEpisode.assetId },
+    parentId: respEpisode.assetId,
     royaltyBps: 200,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
-  console.log('Contribution', contribution);
+  console.log('Contribution', respContribution);
 
   console.log('E2E complete: register → mint royalty tokens (via Story) → vote/stake via frontend/backend.');
 }

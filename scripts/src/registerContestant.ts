@@ -1,11 +1,11 @@
 import 'dotenv/config';
-import { StoryClient, uploadJsonToIPFS, AbvClient } from '@realityos/integrations';
-import { getArg } from './utils';
+import { AbvClient, registerIPAsset } from '@realityos/integrations';
+import { getArg, requireEnv } from './utils';
 
 async function main() {
   const name = getArg('name', 'New Contestant');
   const description = getArg('description', 'RealityOS contestant');
-  const mediaUrl = getArg('media');
+  const mediaUrl = getArg('media') || getArg('image');
   const royaltyBps = Number(getArg('royaltyBps', '500'));
   const useAbv = getArg('abv', 'false') === 'true';
 
@@ -22,19 +22,16 @@ async function main() {
     metadata = { ...metadata, abv: analyzed };
   }
 
-  const upload = await uploadJsonToIPFS(metadata, {
-    apiKey: process.env.IPFS_API_KEY,
-    apiUrl: process.env.IPFS_API_URL,
-  });
-
-  const story = new StoryClient({ apiKey: process.env.STORY_API_KEY });
-  const resp = await story.registerAsset({
+  const resp = await registerIPAsset({
     kind: 'contestant',
-    metadataURI: upload.uri,
+    metadata,
     royaltyBps,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
 
-  console.log('Contestant registered', { assetId: resp.assetId, royaltyBps, metadata: upload.uri });
+  console.log('Contestant registered', { assetId: resp.assetId, royaltyBps, metadata: resp.metadataURI });
 }
 
 main().catch((err) => {

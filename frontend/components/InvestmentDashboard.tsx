@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Wallet } from 'lucide-react';
 import { Card } from './Card';
 
 type Holding = { assetId: string; balance: number; vestingEnds: string };
@@ -21,15 +23,30 @@ export function InvestmentDashboard() {
     <Card
       title="Fan Investment"
       subtitle="Royalty token buy + vesting overview"
-      cta={<button onClick={simulateBuy}>Buy Royalty Tokens</button>}
+      cta={
+        <button onClick={simulateBuy}>
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            <Wallet size={16} />
+            Buy Royalty Tokens
+          </span>
+        </button>
+      }
     >
       <div className="grid">
         {sampleHoldings.map((h) => (
-          <div key={h.assetId} className="card" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <motion.div
+            key={h.assetId}
+            className="card"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.05 }}
+            style={{ background: 'rgba(255,255,255,0.02)', position: 'relative' }}
+          >
+            <div className="radial-glow" style={{ top: -120, left: -160 }} />
             <div className="pill">Asset {h.assetId}</div>
-            <p>Balance: {h.balance}</p>
-            <p style={{ color: 'var(--muted)' }}>Vesting ends: {h.vestingEnds}</p>
-          </div>
+            <p style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{h.balance} RFT</p>
+            <p style={{ color: 'var(--muted)', margin: 0 }}>Vesting ends: {h.vestingEnds}</p>
+          </motion.div>
         ))}
       </div>
       {status && <p style={{ color: 'var(--muted)' }}>{status}</p>}

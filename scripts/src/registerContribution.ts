@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { StoryClient, uploadJsonToIPFS, YakoaClient } from '@realityos/integrations';
-import { getArg, requireArg } from './utils';
+import { registerIPAsset, YakoaClient } from '@realityos/integrations';
+import { getArg, requireArg, requireEnv } from './utils';
 
 async function main() {
   const episodeId = requireArg('episodeId');
@@ -31,23 +31,20 @@ async function main() {
     yakoa: yakoaResult,
   };
 
-  const upload = await uploadJsonToIPFS(metadata, {
-    apiKey: process.env.IPFS_API_KEY,
-    apiUrl: process.env.IPFS_API_URL,
-  });
-
-  const story = new StoryClient({ apiKey: process.env.STORY_API_KEY });
-  const resp = await story.registerAsset({
+  const resp = await registerIPAsset({
     kind: 'contribution',
-    metadataURI: upload.uri,
+    metadata,
     parentId: episodeId,
     royaltyBps,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
 
   console.log('Contribution registered', {
     assetId: resp.assetId,
     parent: episodeId,
-    metadata: upload.uri,
+    metadata: resp.metadataURI,
     yakoa: yakoaResult,
   });
 }

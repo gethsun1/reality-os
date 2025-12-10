@@ -2,10 +2,13 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "..",
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "types": ["node"]
+    "moduleResolution": "node",
+    "types": ["node"],
+    "paths": {
+      "@realityos/integrations": ["../integrations/src"]
+    }
   },
   "include": ["src"]
 }

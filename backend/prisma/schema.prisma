@@ -14,6 +14,7 @@ model User {
   createdAt DateTime @default(now())
   engagements Engagement[]
   stakes    FanStake[]
+  economicParticipations EconomicParticipation[]
 }
 
 model IPAsset {
@@ -21,7 +22,7 @@ model IPAsset {
   chainId     Int
   contract    String
   assetType   String
-  assetId     String
+  assetId     String   @unique
   metadataURI String
   creator     String
   parentId    String?

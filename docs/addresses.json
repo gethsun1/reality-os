@@ -1,0 +1,8 @@
+{
+  "network": {
+    "name": "storyTestnet",
+    "chainId": "1315"
+  },
+  "franchiseToken": "0x3905052fB9d1502B246442945Eb1DC9573Be4708",
+  "realityShowIP": "0xf6Cd6D7Ee5f2F879A872f559Ef8Db39d73a69f8e"
+}

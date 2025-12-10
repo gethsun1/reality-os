@@ -13,12 +13,14 @@
     "prisma:generate": "prisma generate"
   },
   "dependencies": {
+    "@fastify/cors": "^9.0.0",
+    "@fastify/formbody": "^7.4.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^3.0.0",
     "@prisma/client": "^5.7.0",
     "@realityos/integrations": "0.1.0",
-    "@fastify/cors": "^9.0.0",
-    "@fastify/formbody": "^8.0.0",
-    "ethers": "^6.10.0",
     "dotenv": "^16.3.2",
+    "ethers": "^6.10.0",
     "fastify": "^4.25.2",
     "fastify-plugin": "^4.5.1"
   },
@@ -28,4 +30,3 @@
     "tsx": "^4.7.0"
   }
 }
-

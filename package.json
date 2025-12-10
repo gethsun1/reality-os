@@ -15,7 +15,9 @@
     "format": "prettier --write .",
     "typecheck": "npm -ws run typecheck",
     "build": "npm -ws run build",
-    "test": "npm -ws run test"
+    "test": "npm -ws run test",
+    "validate": "npm run lint && npm run typecheck && npm run build && npm run test",
+    "demo:seed": "npm run e2e -w scripts"
   },
   "devDependencies": {
     "@types/node": "^20.11.10",

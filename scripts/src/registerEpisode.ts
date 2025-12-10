@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { StoryClient, uploadJsonToIPFS } from '@realityos/integrations';
-import { getArg, requireArg } from './utils';
+import { registerIPAsset } from '@realityos/integrations';
+import { getArg, requireArg, requireEnv } from './utils';
 
 async function main() {
   const contestantId = requireArg('contestantId');
@@ -19,20 +19,17 @@ async function main() {
     ],
   };
 
-  const upload = await uploadJsonToIPFS(metadata, {
-    apiKey: process.env.IPFS_API_KEY,
-    apiUrl: process.env.IPFS_API_URL,
-  });
-
-  const story = new StoryClient({ apiKey: process.env.STORY_API_KEY });
-  const resp = await story.registerAsset({
+  const resp = await registerIPAsset({
     kind: 'episode',
-    metadataURI: upload.uri,
+    metadata,
     parentId: contestantId,
     royaltyBps,
+    ipfsApiKey: requireEnv('IPFS_API_KEY'),
+    ipfsApiUrl: requireEnv('IPFS_API_URL'),
+    storyApiKey: requireEnv('STORY_API_KEY'),
   });
 
-  console.log('Episode registered', { assetId: resp.assetId, parent: contestantId, metadata: upload.uri });
+  console.log('Episode registered', { assetId: resp.assetId, parent: contestantId, metadata: resp.metadataURI });
 }
 
 main().catch((err) => {

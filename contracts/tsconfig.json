@@ -2,6 +2,8 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "types": ["node", "hardhat"]
   },
   "include": ["hardhat.config.ts", "scripts", "test", "typechain", "contracts"]

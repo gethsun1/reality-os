@@ -1,9 +1,12 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
+import swagger from '@fastify/swagger';
+import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config';
 import { StoryClient, uploadJsonToIPFS, YakoaClient } from '@realityos/integrations';
 import { prisma } from './db/client';
+import { startIndexer } from './events/indexer';
 
 const app = Fastify({ logger: true });
 const story = new StoryClient({ apiKey: config.storyApiKey });
@@ -11,10 +14,17 @@ const yakoa = new YakoaClient({ apiKey: config.yokoaApiKey });
 
 app.register(cors, { origin: true });
 app.register(formbody);
+app.register(swagger, {
+  openapi: {
+    info: { title: 'RealityOS API', version: '0.1.0' },
+    servers: [{ url: config.baseUrl }],
+  },
+});
+app.register(swaggerUi, { routePrefix: '/docs' });
 
 app.get('/health', async () => ({ status: 'ok' }));
 
-app.post('/api/verify', async (request, reply) => {
+app.post('/authenticity/verify', async (request, reply) => {
   try {
     // @ts-expect-error fastify lacks body typing here
     const { url, content, mimeType } = request.body || {};
@@ -27,110 +37,79 @@ app.post('/api/verify', async (request, reply) => {
   }
 });
 
-app.post('/api/register/contestant', async (request, reply) => {
+app.post('/ip/register', async (request, reply) => {
   try {
-    // @ts-expect-error body typing simplified
-    const { wallet, name, description, media, royaltyBps = 500 } = request.body || {};
-    const metadata = { name, description, media, attributes: [{ trait_type: 'role', value: 'contestant' }] };
+    // @ts-expect-error simplified typing
+    const { wallet, kind, contestantId, episodeId, name, title, description, media, text, royaltyBps, verify } =
+      request.body || {};
+
+    const chosenRoyalty = Number(royaltyBps ?? (kind === 'contestant' ? 500 : kind === 'episode' ? 300 : 200));
+    const assetKind = (kind || 'contestant') as 'contestant' | 'episode' | 'contribution';
+
+    let yakoaResult: unknown;
+    if (assetKind === 'contribution' && verify !== false && (media || text)) {
+      yakoaResult = await yakoa.verify({ url: media, content: text });
+    }
+
+    const metadata =
+      assetKind === 'contestant'
+        ? {
+            name: name || title || 'Contestant',
+            description: description || 'RealityOS contestant',
+            media,
+            attributes: [{ trait_type: 'role', value: 'contestant' }],
+          }
+        : assetKind === 'episode'
+          ? {
+              name: title || 'Episode',
+              description: description || 'Episode description',
+              media,
+              attributes: [
+                { trait_type: 'role', value: 'episode' },
+                { trait_type: 'contestantId', value: contestantId },
+              ],
+            }
+          : {
+              name: `Contribution by ${wallet || 'fan'}`,
+              description: text,
+              media,
+              yakoa: yakoaResult,
+              attributes: [
+                { trait_type: 'role', value: 'contribution' },
+                { trait_type: 'episodeId', value: episodeId },
+              ],
+            };
+
     const upload = await uploadJsonToIPFS(metadata, {
       apiUrl: config.ipfsApiUrl,
       apiKey: config.ipfsApiKey,
     });
+
     const resp = await story.registerAsset({
-      kind: 'contestant',
+      kind: assetKind,
       metadataURI: upload.uri,
-      royaltyBps,
+      parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
+      royaltyBps: chosenRoyalty,
     });
-    await upsertAsset({
+
+    const record = await upsertAsset({
       wallet,
-      assetType: 'contestant',
+      assetType: assetKind,
       assetId: resp.assetId,
       metadataURI: upload.uri,
-      royaltyBps,
+      royaltyBps: chosenRoyalty,
+      parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
     });
-    return { assetId: resp.assetId, metadataURI: upload.uri };
+
+    return { assetId: resp.assetId, metadataURI: upload.uri, yakoa: yakoaResult, dbId: record.id };
   } catch (err) {
     request.log.error(err);
     reply.code(400);
-    return { error: 'contestant_registration_failed' };
+    return { error: 'ip_registration_failed' };
   }
 });
 
-app.post('/api/register/episode', async (request, reply) => {
-  try {
-    // @ts-expect-error body typing simplified
-    const { wallet, contestantId, title, description, media, royaltyBps = 300 } = request.body || {};
-    const metadata = {
-      name: title,
-      description,
-      media,
-      attributes: [
-        { trait_type: 'role', value: 'episode' },
-        { trait_type: 'contestantId', value: contestantId },
-      ],
-    };
-    const upload = await uploadJsonToIPFS(metadata, { apiUrl: config.ipfsApiUrl, apiKey: config.ipfsApiKey });
-    const resp = await story.registerAsset({
-      kind: 'episode',
-      metadataURI: upload.uri,
-      parentId: contestantId,
-      royaltyBps,
-    });
-    await upsertAsset({
-      wallet,
-      assetType: 'episode',
-      assetId: resp.assetId,
-      metadataURI: upload.uri,
-      royaltyBps,
-      parentId: contestantId,
-    });
-    return { assetId: resp.assetId, metadataURI: upload.uri };
-  } catch (err) {
-    request.log.error(err);
-    reply.code(400);
-    return { error: 'episode_registration_failed' };
-  }
-});
-
-app.post('/api/register/contribution', async (request, reply) => {
-  try {
-    // @ts-expect-error body typing simplified
-    const { wallet, episodeId, contributor, media, text, royaltyBps = 200 } = request.body || {};
-    const verification = await yakoa.verify({ url: media, content: text });
-    const metadata = {
-      name: `Contribution by ${contributor || wallet}`,
-      description: text,
-      media,
-      yakoa: verification,
-      attributes: [
-        { trait_type: 'role', value: 'contribution' },
-        { trait_type: 'episodeId', value: episodeId },
-      ],
-    };
-    const upload = await uploadJsonToIPFS(metadata, { apiUrl: config.ipfsApiUrl, apiKey: config.ipfsApiKey });
-    const resp = await story.registerAsset({
-      kind: 'contribution',
-      metadataURI: upload.uri,
-      parentId: episodeId,
-      royaltyBps,
-    });
-    await upsertAsset({
-      wallet,
-      assetType: 'contribution',
-      assetId: resp.assetId,
-      metadataURI: upload.uri,
-      royaltyBps,
-      parentId: episodeId,
-    });
-    return { assetId: resp.assetId, metadataURI: upload.uri, yakoa: verification };
-  } catch (err) {
-    request.log.error(err);
-    reply.code(400);
-    return { error: 'contribution_registration_failed' };
-  }
-});
-
-app.post('/api/events/ingest', async (request, reply) => {
+app.post('/analytics/ingest', async (request, reply) => {
   try {
     // @ts-expect-error body typing simplified
     const { type, payload } = request.body || {};
@@ -170,8 +149,8 @@ async function upsertAsset(params: {
     where: { assetId: params.assetId },
     update: {},
     create: {
-      chainId: Number(process.env.STORY_CHAIN_ID || 1513),
-      contract: process.env.REALITY_CONTRACT_ADDRESS || 'onchain',
+      chainId: config.storyChainId,
+      contract: config.realityContract || 'onchain',
       assetType: params.assetType,
       assetId: params.assetId,
       metadataURI: params.metadataURI,
@@ -189,6 +168,16 @@ async function upsertAsset(params: {
         : undefined,
     },
   });
+}
+
+if (config.storyRpcUrl && config.realityContract) {
+  startIndexer({
+    rpcUrl: config.storyRpcUrl,
+    contractAddress: config.realityContract,
+    chainId: config.storyChainId,
+  }).catch((err) => app.log.error({ err }, 'Indexer failed to start'));
+} else {
+  app.log.warn('Indexer disabled: missing STORY_RPC_URL or REALITY_CONTRACT_ADDRESS');
 }
 
 app.listen({ port: config.port, host: '0.0.0.0' }, (err, address) => {

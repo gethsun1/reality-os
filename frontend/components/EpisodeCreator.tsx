@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { motion } from 'framer-motion';
+import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import { Card } from './Card';
 import { backendPost } from '../lib/api';
 
@@ -9,11 +11,14 @@ export function EpisodeCreator() {
   const [title, setTitle] = useState('');
   const [media, setMedia] = useState('');
   const [status, setStatus] = useState<string>();
+  const [loading, setLoading] = useState(false);
 
   const submit = async () => {
     try {
+      setLoading(true);
       setStatus('Submitting episode...');
-      await backendPost('/api/register/episode', {
+      await backendPost('/ip/register', {
+        kind: 'episode',
         contestantId,
         title,
         media,
@@ -23,12 +28,25 @@ export function EpisodeCreator() {
       setStatus('Episode submitted to backend for Story registration.');
     } catch (err) {
       setStatus('Failed — check backend URL/env.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Card title="Episode Creation" subtitle="Producers & fans can mint episodes" cta={<button onClick={submit}>Create</button>}>
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+    <Card
+      title="Episode Creation"
+      subtitle="Producers & fans can mint episodes"
+      cta={
+        <button onClick={submit} disabled={loading}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {loading ? <Loader2 size={16} className="spin" /> : <Wand2 size={16} />}
+            Create Episode
+          </span>
+        </button>
+      }
+    >
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="Contestant ID"
           value={contestantId}
@@ -37,13 +55,20 @@ export function EpisodeCreator() {
         />
         <input placeholder="Episode title" value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
         <input placeholder="Media URL" value={media} onChange={(e) => setMedia(e.target.value)} style={inputStyle} />
+        <div className="badge">
+          <Sparkles size={14} />
+          Story-bound
+        </div>
       </div>
-      {status && <p style={{ color: 'var(--muted)' }}>{status}</p>}
+      <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
+        <ProgressBar active={loading} />
+        {status && <p style={{ color: 'var(--muted)' }}>{status}</p>}
+      </div>
     </Card>
   );
 }
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   background: 'rgba(255,255,255,0.05)',
   border: '1px solid rgba(255,255,255,0.1)',
   borderRadius: 8,
@@ -51,4 +76,30 @@ const inputStyle: React.CSSProperties = {
   color: 'var(--text)',
   minWidth: 160,
 };
+
+function ProgressBar({ active }: { active: boolean }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: 10,
+        background: 'rgba(255,255,255,0.06)',
+        borderRadius: 999,
+        overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.12)',
+      }}
+    >
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: active ? '100%' : '30%' }}
+        transition={{ duration: active ? 1.4 : 0.6, ease: 'easeInOut', repeat: active ? Infinity : 0 }}
+        style={{
+          height: '100%',
+          background: 'linear-gradient(120deg, #ff7a1a, #ff3faf)',
+          filter: 'drop-shadow(0 0 10px rgba(255,63,175,0.4))',
+        }}
+      />
+    </div>
+  );
+}
 

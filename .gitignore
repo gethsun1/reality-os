@@ -37,6 +37,9 @@ coverage
 cache
 artifacts
 typechain
+contracts/typechain-types
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
 *.tsbuildinfo
 .DS_Store
 
