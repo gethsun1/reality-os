@@ -1,5 +1,5 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "jsx": "preserve",
     "moduleResolution": "Bundler",
@@ -36,3 +36,5 @@
     "node_modules"
   ]
 }
+
+

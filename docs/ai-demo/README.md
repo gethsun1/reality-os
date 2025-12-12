@@ -19,3 +19,5 @@ Use these prompts to generate a 30–60s teaser and contestant avatars, then reg
 ## Assets Folder
 - Place generated files here for reference (not committed by default).
 
+
+

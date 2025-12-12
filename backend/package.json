@@ -18,7 +18,8 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.0.0",
     "@prisma/client": "^5.7.0",
-    "@realityos/integrations": "0.1.0",
+    "@realityos/integrations": "file:../integrations",
+    "axios": "^1.6.7",
     "dotenv": "^16.3.2",
     "ethers": "^6.10.0",
     "fastify": "^4.25.2",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.10",
+    "@vercel/node": "^3.2.4",
     "prisma": "^5.7.0",
     "tsx": "^4.7.0"
   }

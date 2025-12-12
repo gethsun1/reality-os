@@ -1,15 +1,16 @@
 {
-  "extends": "../tsconfig.base.json",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "..",
     "module": "ESNext",
     "moduleResolution": "node",
     "types": ["node"],
+    "baseUrl": ".",
     "paths": {
       "@realityos/integrations": ["../integrations/src"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "api"]
 }
 

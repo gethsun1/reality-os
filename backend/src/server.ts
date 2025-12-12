@@ -1,133 +1,175 @@
-import Fastify from 'fastify';
+import fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import { config } from './config';
-import { StoryClient, uploadJsonToIPFS, YakoaClient } from '@realityos/integrations';
+import { StoryClient, uploadJsonToIPFS, YakoaClient } from './integrations';
 import { prisma } from './db/client';
 import { startIndexer } from './events/indexer';
 
-const app = Fastify({ logger: true });
-const story = new StoryClient({ apiKey: config.storyApiKey });
-const yakoa = new YakoaClient({ apiKey: config.yokoaApiKey });
+let appInstance: FastifyInstance | null = null;
+let indexerStarted = false;
 
-app.register(cors, { origin: true });
-app.register(formbody);
-app.register(swagger, {
-  openapi: {
-    info: { title: 'RealityOS API', version: '0.1.0' },
-    servers: [{ url: config.baseUrl }],
-  },
-});
-app.register(swaggerUi, { routePrefix: '/docs' });
+type VerifyBody = { url?: string; content?: string; mimeType?: string };
+type IpRegisterBody = {
+  wallet?: string;
+  kind?: 'contestant' | 'episode' | 'contribution';
+  contestantId?: string;
+  episodeId?: string;
+  name?: string;
+  title?: string;
+  description?: string;
+  media?: string;
+  text?: string;
+  royaltyBps?: number;
+  verify?: boolean;
+};
+type AnalyticsBody = { type?: string; payload?: { wallet?: string; assetRef?: number; weight?: number } };
 
-app.get('/health', async () => ({ status: 'ok' }));
+export async function buildApp() {
+  if (appInstance) return appInstance;
 
-app.post('/authenticity/verify', async (request, reply) => {
-  try {
-    // @ts-expect-error fastify lacks body typing here
-    const { url, content, mimeType } = request.body || {};
-    const result = await yakoa.verify({ url, content, mimeType });
-    return { result };
-  } catch (err) {
-    request.log.error(err);
-    reply.code(400);
-    return { error: 'verification_failed' };
-  }
-});
+  const app = fastify({ logger: true }) as any as FastifyInstance;
+  const story = new StoryClient({ apiKey: config.storyApiKey });
+  const yakoa = new YakoaClient({ apiKey: config.yokoaApiKey });
 
-app.post('/ip/register', async (request, reply) => {
-  try {
-    // @ts-expect-error simplified typing
-    const { wallet, kind, contestantId, episodeId, name, title, description, media, text, royaltyBps, verify } =
-      request.body || {};
+  app.register(cors, { origin: true });
+  app.register(formbody);
+  app.register(swagger, {
+    openapi: {
+      info: { title: 'RealityOS API', version: '0.1.0' },
+      servers: [{ url: config.baseUrl }],
+    },
+  });
+  app.register(swaggerUi, { routePrefix: '/docs' });
 
-    const chosenRoyalty = Number(royaltyBps ?? (kind === 'contestant' ? 500 : kind === 'episode' ? 300 : 200));
-    const assetKind = (kind || 'contestant') as 'contestant' | 'episode' | 'contribution';
+  const api = app as any;
 
-    let yakoaResult: unknown;
-    if (assetKind === 'contribution' && verify !== false && (media || text)) {
-      yakoaResult = await yakoa.verify({ url: media, content: text });
+  api.get('/health', async () => ({ status: 'ok' }));
+
+  api.post('/authenticity/verify', async (request: FastifyRequest<{ Body: VerifyBody }>, reply: FastifyReply) => {
+    try {
+      const { url, content, mimeType } = request.body || {};
+      const result = await yakoa.verify({ url, content, mimeType });
+      return { result };
+    } catch (err) {
+      request.log.error(err);
+      reply.code(400);
+      return { error: 'verification_failed' };
     }
+  });
 
-    const metadata =
-      assetKind === 'contestant'
-        ? {
-            name: name || title || 'Contestant',
-            description: description || 'RealityOS contestant',
-            media,
-            attributes: [{ trait_type: 'role', value: 'contestant' }],
-          }
-        : assetKind === 'episode'
+  api.post('/ip/register', async (request: FastifyRequest<{ Body: IpRegisterBody }>, reply: FastifyReply) => {
+    try {
+      const { wallet, kind, contestantId, episodeId, name, title, description, media, text, royaltyBps, verify } =
+        request.body || {};
+
+      const chosenRoyalty = Number(royaltyBps ?? (kind === 'contestant' ? 500 : kind === 'episode' ? 300 : 200));
+      const assetKind = (kind || 'contestant') as 'contestant' | 'episode' | 'contribution';
+
+      let yakoaResult: unknown;
+      if (assetKind === 'contribution' && verify !== false && (media || text)) {
+        yakoaResult = await yakoa.verify({ url: media, content: text });
+      }
+
+      const metadata =
+        assetKind === 'contestant'
           ? {
-              name: title || 'Episode',
-              description: description || 'Episode description',
+              name: name || title || 'Contestant',
+              description: description || 'RealityOS contestant',
               media,
-              attributes: [
-                { trait_type: 'role', value: 'episode' },
-                { trait_type: 'contestantId', value: contestantId },
-              ],
+              attributes: [{ trait_type: 'role', value: 'contestant' }],
             }
-          : {
-              name: `Contribution by ${wallet || 'fan'}`,
-              description: text,
-              media,
-              yakoa: yakoaResult,
-              attributes: [
-                { trait_type: 'role', value: 'contribution' },
-                { trait_type: 'episodeId', value: episodeId },
-              ],
-            };
+          : assetKind === 'episode'
+            ? {
+                name: title || 'Episode',
+                description: description || 'Episode description',
+                media,
+                attributes: [
+                  { trait_type: 'role', value: 'episode' },
+                  { trait_type: 'contestantId', value: contestantId },
+                ],
+              }
+            : {
+                name: `Contribution by ${wallet || 'fan'}`,
+                description: text,
+                media,
+                yakoa: yakoaResult,
+                attributes: [
+                  { trait_type: 'role', value: 'contribution' },
+                  { trait_type: 'episodeId', value: episodeId },
+                ],
+              };
 
-    const upload = await uploadJsonToIPFS(metadata, {
-      apiUrl: config.ipfsApiUrl,
-      apiKey: config.ipfsApiKey,
-    });
+      const upload = await uploadJsonToIPFS(metadata, {
+        apiUrl: config.ipfsApiUrl,
+        apiKey: config.ipfsApiKey,
+      });
 
-    const resp = await story.registerAsset({
-      kind: assetKind,
-      metadataURI: upload.uri,
-      parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
-      royaltyBps: chosenRoyalty,
-    });
+      const resp = await story.registerAsset({
+        kind: assetKind,
+        metadataURI: upload.uri,
+        parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
+        royaltyBps: chosenRoyalty,
+      });
 
-    const record = await upsertAsset({
-      wallet,
-      assetType: assetKind,
-      assetId: resp.assetId,
-      metadataURI: upload.uri,
-      royaltyBps: chosenRoyalty,
-      parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
-    });
+      const record = await upsertAsset({
+        wallet,
+        assetType: assetKind,
+        assetId: resp.assetId,
+        metadataURI: upload.uri,
+        royaltyBps: chosenRoyalty,
+        parentId: assetKind === 'episode' ? contestantId : assetKind === 'contribution' ? episodeId : undefined,
+      });
 
-    return { assetId: resp.assetId, metadataURI: upload.uri, yakoa: yakoaResult, dbId: record.id };
-  } catch (err) {
-    request.log.error(err);
-    reply.code(400);
-    return { error: 'ip_registration_failed' };
-  }
-});
+      return { assetId: resp.assetId, metadataURI: upload.uri, yakoa: yakoaResult, dbId: record.id };
+    } catch (err) {
+      request.log.error(err);
+      reply.code(400);
+      return { error: 'ip_registration_failed' };
+    }
+  });
 
-app.post('/analytics/ingest', async (request, reply) => {
-  try {
-    // @ts-expect-error body typing simplified
-    const { type, payload } = request.body || {};
-    await prisma.engagement.create({
-      data: {
-        user: { connectOrCreate: { where: { wallet: payload?.wallet }, create: { wallet: payload?.wallet } } },
-        asset: { connect: { id: payload?.assetRef } },
+  api.post('/analytics/ingest', async (request: FastifyRequest<{ Body: AnalyticsBody }>, reply: FastifyReply) => {
+    try {
+      const { type, payload } = request.body || {};
+      const data: any = {
+        user: {
+          connectOrCreate: {
+            where: { wallet: payload?.wallet || 'unknown' },
+            create: { wallet: payload?.wallet || 'unknown' },
+          },
+        },
         action: type || 'event',
         weight: payload?.weight ?? 1,
-      },
-    });
-    return { ok: true };
-  } catch (err) {
-    request.log.error(err);
-    reply.code(400);
-    return { error: 'ingest_failed' };
+      };
+      if (payload?.assetRef) {
+        data.asset = { connect: { id: payload.assetRef } };
+      }
+      await prisma.engagement.create({ data });
+      return { ok: true };
+    } catch (err) {
+      request.log.error(err);
+      reply.code(400);
+      return { error: 'ingest_failed' };
+    }
+  });
+
+  if (config.storyRpcUrl && config.realityContract && !indexerStarted) {
+    indexerStarted = true;
+    startIndexer({
+      rpcUrl: config.storyRpcUrl,
+      contractAddress: config.realityContract,
+      chainId: config.storyChainId,
+    }).catch((err) => app.log.error({ err }, 'Indexer failed to start'));
+  } else if (!config.storyRpcUrl || !config.realityContract) {
+    app.log.warn('Indexer disabled: missing STORY_RPC_URL or REALITY_CONTRACT_ADDRESS');
   }
-});
+
+  appInstance = app;
+  return appInstance;
+}
 
 async function upsertAsset(params: {
   wallet?: string;
@@ -169,22 +211,4 @@ async function upsertAsset(params: {
     },
   });
 }
-
-if (config.storyRpcUrl && config.realityContract) {
-  startIndexer({
-    rpcUrl: config.storyRpcUrl,
-    contractAddress: config.realityContract,
-    chainId: config.storyChainId,
-  }).catch((err) => app.log.error({ err }, 'Indexer failed to start'));
-} else {
-  app.log.warn('Indexer disabled: missing STORY_RPC_URL or REALITY_CONTRACT_ADDRESS');
-}
-
-app.listen({ port: config.port, host: '0.0.0.0' }, (err, address) => {
-  if (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-  app.log.info(`Server running at ${address}`);
-});
 

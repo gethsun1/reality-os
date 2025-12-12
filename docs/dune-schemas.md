@@ -76,3 +76,5 @@ CREATE TABLE fan_stakes (
 - Investment flow (token purchase) → `economic_participation`.
 - Staking events → `fan_stakes` and `engagements`.
 
+
+

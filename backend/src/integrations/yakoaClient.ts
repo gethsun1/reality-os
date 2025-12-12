@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 
 export interface YakoaVerificationInput {
   url?: string;
@@ -37,6 +37,5 @@ export class YakoaClient {
     };
   }
 }
-
 
 

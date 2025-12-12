@@ -16,3 +16,5 @@
    - investment actions logged in backend `economic_participation`
 8) Indexer ingests events → Dune tables → dashboard.
 
+
+

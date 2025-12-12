@@ -66,8 +66,8 @@ const config: Config = {
           '50%': { transform: 'translateY(-10px)' },
         },
         'pulse-soft': {
-          '0%,100%': { opacity: 0.85, filter: 'drop-shadow(0 0 12px rgba(255,124,40,0.35))' },
-          '50%': { opacity: 1, filter: 'drop-shadow(0 0 20px rgba(255,63,175,0.4))' },
+          '0%,100%': { opacity: '0.85', filter: 'drop-shadow(0 0 12px rgba(255,124,40,0.35))' },
+          '50%': { opacity: '1', filter: 'drop-shadow(0 0 20px rgba(255,63,175,0.4))' },
         },
         'gradient-sweep': {
           '0%': { backgroundPosition: '0% 50%' },
@@ -75,9 +75,9 @@ const config: Config = {
           '100%': { backgroundPosition: '0% 50%' },
         },
         'beam-scan': {
-          '0%': { transform: 'translateX(-30%)', opacity: 0.3 },
-          '50%': { transform: 'translateX(0%)', opacity: 0.65 },
-          '100%': { transform: 'translateX(30%)', opacity: 0.3 },
+          '0%': { transform: 'translateX(-30%)', opacity: '0.3' },
+          '50%': { transform: 'translateX(0%)', opacity: '0.65' },
+          '100%': { transform: 'translateX(30%)', opacity: '0.3' },
         },
         waveform: {
           '0%,100%': { clipPath: 'inset(5% 0 0 0)' },
